@@ -1,0 +1,16 @@
+previews:
+  generation: automatic
+
+services:
+  - type: web
+    name: bitespeed-payback
+    env: node
+    region: oregon 
+    plan: free 
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PORT
+        value: 3000
