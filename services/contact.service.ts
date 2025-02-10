@@ -29,6 +29,8 @@ export const matchingContacts = async (
     throw new ValidationError("Invalid phone number");
   }
 
+  
+
   try {
     const emailDomain = email ? email.split("@")[1] : undefined;
 
@@ -191,11 +193,29 @@ export const identifyContact = async (
   }
 };
 
+export const getAllContacts = async (
+  email: string | null,
+  phoneNumber: string | null
+) => {
+  try {
+    const emailDomain = email ? email.split("@")[1] : undefined;
 
-export const clearContacts = async () => {
-    try {
-        await prisma.contact.deleteMany({});
-    } catch (error) {
-        throw new DatabaseError("There was an issue with the database.");
-    }
-}
+    const contacts = await prisma.contact.findMany({
+      where: {
+        OR: [
+          {
+            email: emailDomain
+              ? { contains: `@${emailDomain}`, mode: "insensitive" }
+              : undefined,
+          },
+          { phoneNumber: phoneNumber || undefined },
+        ],
+      },
+    });
+
+    return contacts;
+  } catch (error) {
+    throw new DatabaseError("There was an issue with the database.");
+  }
+};
+
