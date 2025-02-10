@@ -1,10 +1,12 @@
 import prisma from "../config/prisma";
+import { DatabaseError, ValidationError } from "../utils/errors";
 import {
   EMAIL_REGEX,
   matchingEmailDomain,
   PHONE_NUMBER_REGEX,
 } from "../utils/validations";
 
+// Identifies a contact based on the provided email or phone number
 export const matchingContacts = async (
   email: string | null,
   phoneNumber: string | null
@@ -16,149 +18,175 @@ export const matchingContacts = async (
       phoneNumber &&
       !PHONE_NUMBER_REGEX.test(phoneNumber))
   ) {
-    throw new Error("Email or phone number is required");
+    throw new ValidationError("Email or phone number is required");
   }
 
   if (email && EMAIL_REGEX.test(email) === false) {
-    throw new Error("Invalid email address");
+    throw new ValidationError("Invalid email address");
   }
 
   if (phoneNumber && PHONE_NUMBER_REGEX.test(phoneNumber) === false) {
-    throw new Error("Invalid phone number");
+    throw new ValidationError("Invalid phone number");
   }
 
-  const emailDomain = email ? email.split("@")[1] : undefined;
+  try {
+    const emailDomain = email ? email.split("@")[1] : undefined;
 
-  const contacts = await prisma.contact.findMany({
-    where: {
-      OR: [
-        {
-          email: emailDomain
-            ? { contains: `@${emailDomain}`, mode: "insensitive" }
-            : undefined,
-        },
-        { phoneNumber: phoneNumber || undefined },
-      ],
-    },
-  });
+    const contacts = await prisma.contact.findMany({
+      where: {
+        OR: [
+          {
+            email: emailDomain
+              ? { contains: `@${emailDomain}`, mode: "insensitive" }
+              : undefined,
+          },
+          { phoneNumber: phoneNumber || undefined },
+        ],
+      },
+    });
 
-  return contacts;
+    return contacts;
+  } catch (error) {
+    throw new DatabaseError("There was an issue with the database.");
+  }
 };
 
+// Creates a new contact with the provided email and phone number
 export const createContact = async (
   email: string | null,
   phoneNumber: string | null,
   linkedId: number | null
 ) => {
   if (!email && !phoneNumber) {
-    throw new Error("Email or phone number is required");
+    throw new ValidationError("Email or phone number is required");
   }
 
-  const newContact = await prisma.contact.create({
-    data: {
-      email,
-      phoneNumber,
-      linkedId: linkedId,
-      linkPrecedence: linkedId ? "secondary" : "primary",
-    },
-  });
-  return newContact;
+  try {
+    const newContact = await prisma.contact.create({
+      data: {
+        email,
+        phoneNumber,
+        linkedId: linkedId,
+        linkPrecedence: linkedId ? "secondary" : "primary",
+      },
+    });
+    return newContact;
+  } catch (error) {
+    throw new DatabaseError("There was an issue with the database.");
+  }
 };
 
+// Updates the contact with the provided email and phone number
 export const updateContact = async (
   contactId: number,
   email: string | null,
   phoneNumber: string | null
 ) => {
-  const updatedContact = await prisma.contact.update({
-    where: { id: contactId },
-    data: {
-      email,
-      phoneNumber,
-    },
-  });
-  return updatedContact;
+  if (!email && !phoneNumber) {
+    throw new ValidationError("Email or phone number is required");
+  }
+
+  try {
+    const updatedContact = await prisma.contact.update({
+      where: { id: contactId },
+      data: {
+        email,
+        phoneNumber,
+      },
+    });
+    return updatedContact;
+  } catch (error) {
+    throw new DatabaseError("There was an issue with the database.");
+  }
 };
 
 export const identifyContact = async (
   email: string | null,
   phoneNumber: string | null
 ) => {
-  const contacts = await matchingContacts(email, phoneNumber);
+  try {
+    const contacts = await matchingContacts(email, phoneNumber);
 
-  let primaryContact = contacts
-    .sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    )
-    .find((c) => c.linkedId === null);
+    let primaryContact = contacts
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+      .find((c) => c.linkedId === null);
 
-  if (!primaryContact && contacts.length > 0) {
-    
-    primaryContact = contacts[0];
-  }
+    if (!primaryContact && contacts.length > 0) {
+      primaryContact = contacts[0];
+    }
 
-  if (!primaryContact) {
-    const newContact = await createContact(email, phoneNumber, null);
+    if (!primaryContact) {
+      const newContact = await createContact(email, phoneNumber, null);
 
-    return {
-      primaryContactId: newContact.id,
-      emails: [newContact.email].filter(Boolean),
-      phoneNumbers: [newContact.phoneNumber].filter(Boolean),
-      secondaryContactIds: [],
-    };
-  }
+      return {
+        primaryContactId: newContact.id,
+        emails: [newContact.email].filter(Boolean),
+        phoneNumbers: [newContact.phoneNumber].filter(Boolean),
+        secondaryContactIds: [],
+      };
+    }
 
-  // Get all linked secondary contacts
-  const secondaryContacts = contacts.filter((c) => c.id !== primaryContact.id);
-
-  // If a new contact is introduced, create a secondary contact
-  const existingEmails = new Set(contacts.map((c) => c.email).filter(Boolean));
-  const existingPhones = new Set(
-    contacts.map((c) => c.phoneNumber).filter(Boolean)
-  );
-
-  const emailIsNew = email && !existingEmails.has(email);
-  const phoneNumberIsNew = phoneNumber && !existingPhones.has(phoneNumber);
-
-  if (emailIsNew) {
-    const existingContact = contacts.find(
-      (c) => c.phoneNumber === phoneNumber
+    // Get all linked secondary contacts
+    const secondaryContacts = contacts.filter(
+      (c) => c.id !== primaryContact.id
     );
 
-    if (existingContact) {
-      const newSecondary = await createContact(
-        email,
-        phoneNumber,
-        primaryContact.id
+    // If a new contact is introduced, create a secondary contact
+    const existingEmails = new Set(
+      contacts.map((c) => c.email).filter(Boolean)
+    );
+    const existingPhones = new Set(
+      contacts.map((c) => c.phoneNumber).filter(Boolean)
+    );
+
+    // If a new contact is introduced, create a secondary contact
+    const emailIsNew = email && !existingEmails.has(email);
+    const phoneNumberIsNew = phoneNumber && !existingPhones.has(phoneNumber);
+
+    if (emailIsNew) {
+      const existingContact = contacts.find(
+        (c) => c.phoneNumber === phoneNumber
       );
-      secondaryContacts.push(newSecondary);
-    }
-} else if (phoneNumberIsNew) {
-    const existingContact = contacts.find((c) => c.email === email);
 
-    if (existingContact) {
-      const newSecondary = await createContact(
-        email,
-        phoneNumber,
-        primaryContact.id
+      if (existingContact) {
+        const newSecondary = await createContact(
+          email,
+          phoneNumber,
+          primaryContact.id
         );
-      secondaryContacts.push(newSecondary);
+        secondaryContacts.push(newSecondary);
+      }
+    } else if (phoneNumberIsNew) {
+      const existingContact = contacts.find((c) => c.email === email);
+
+      if (existingContact) {
+        const newSecondary = await createContact(
+          email,
+          phoneNumber,
+          primaryContact.id
+        );
+        secondaryContacts.push(newSecondary);
+      }
     }
+
+    const response = {
+      primaryContactId: primaryContact.id,
+      emails: [
+        primaryContact.email,
+        ...secondaryContacts.map((c) => c.email),
+      ].filter(Boolean),
+      phoneNumbers: [
+        primaryContact.phoneNumber,
+        ...secondaryContacts.map((c) => c.phoneNumber),
+      ].filter(Boolean),
+      secondaryContactIds: secondaryContacts.map((c) => c.id),
+    };
+
+    return response;
+  } catch (error) {
+    throw new DatabaseError("There was an issue with the database.");
   }
-
-  const response = {
-    primaryContactId: primaryContact.id,
-    emails: [
-      primaryContact.email,
-      ...secondaryContacts.map((c) => c.email),
-    ].filter(Boolean),
-    phoneNumbers: [
-      primaryContact.phoneNumber,
-      ...secondaryContacts.map((c) => c.phoneNumber),
-    ].filter(Boolean),
-    secondaryContactIds: secondaryContacts.map((c) => c.id),
-  };
-
-  return response;
 };
