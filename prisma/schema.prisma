@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LinkPrecedence {
+  primary
+  secondary
+}
+
+// NOTE linkedId IS the ID of another Contact linked to this one
+model Contact {
+  id             Int            @id @default(autoincrement())
+  phoneNumber    String?
+  email          String?
+  linkedId       Int? // ID of another Contact linked to this one
+  linkPrecedence LinkPrecedence @default(primary) // "primary" if it's the first Contact in the link
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  primaryContact    Contact?  @relation("ContactLinked", fields: [linkedId], references: [id])
+  secondaryContacts Contact[] @relation("ContactLinked")
+
+  @@map("contacts")
+}
