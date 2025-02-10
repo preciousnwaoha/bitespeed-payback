@@ -109,7 +109,7 @@ app.post("/identify", async (req: Request, res: Response) => {
 });
 
 app.get("/", (req: Request, res: Response) => {
-  res.send("Hello World!");
+  res.send("Hello World!\nPlease tell Dr. Emmett Brown that Bitespeed has reconciled his identity.\nWe got him!");
 });
 
 // Start server
