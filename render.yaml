@@ -11,3 +11,5 @@ services:
         sync: false
       - key: PORT
         value: 3000
+      - key: CLEAR_PASSWORD
+        sync: false
