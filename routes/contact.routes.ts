@@ -6,6 +6,6 @@ const router = Router();
 router.post("/", identify);
 
 router.get("/", getAll);
-router.delete("/clear", clearAll);
+router.delete("/", clearAll);
 
 export default router;

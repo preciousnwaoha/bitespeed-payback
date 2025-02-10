@@ -95,7 +95,6 @@ export const identifyContact = async (
     .find((c) => c.linkedId === null);
 
   if (!primaryContact && contacts.length > 0) {
-    
     primaryContact = contacts[0];
   }
 
@@ -123,9 +122,7 @@ export const identifyContact = async (
   const phoneNumberIsNew = phoneNumber && !existingPhones.has(phoneNumber);
 
   if (emailIsNew) {
-    const existingContact = contacts.find(
-      (c) => c.phoneNumber === phoneNumber
-    );
+    const existingContact = contacts.find((c) => c.phoneNumber === phoneNumber);
 
     if (existingContact) {
       const newSecondary = await createContact(
@@ -135,7 +132,7 @@ export const identifyContact = async (
       );
       secondaryContacts.push(newSecondary);
     }
-} else if (phoneNumberIsNew) {
+  } else if (phoneNumberIsNew) {
     const existingContact = contacts.find((c) => c.email === email);
 
     if (existingContact) {
@@ -143,7 +140,7 @@ export const identifyContact = async (
         email,
         phoneNumber,
         primaryContact.id
-        );
+      );
       secondaryContacts.push(newSecondary);
     }
   }
@@ -169,9 +166,8 @@ export const getAllContacts = async (
   email: string | null,
   phoneNumber: string | null
 ) => {
-
-    const contacts = await matchingContacts(email, phoneNumber);
-    return contacts;
+  const contacts = await matchingContacts(email, phoneNumber);
+  return contacts;
 };
 
 // Clear all contacts that match the email or phone number
@@ -179,33 +175,33 @@ export const clearAllContacts = async (
   email: string | null,
   phoneNumber: string | null
 ) => {
+  if (!email && !phoneNumber) {
+    await prisma.contact.deleteMany();
+  }
+
   if (
-    (!email && !phoneNumber) ||
-    (email &&
-      !EMAIL_REGEX.test(email) &&
-      phoneNumber &&
-      !PHONE_NUMBER_REGEX.test(phoneNumber))
+    email &&
+    !EMAIL_REGEX.test(email) &&
+    phoneNumber &&
+    !PHONE_NUMBER_REGEX.test(phoneNumber)
   ) {
     throw new ValidationError("Email or phone number is required");
   }
 
-
-    if (email) {
-      const emailDomain = email.split("@")[1];
-      await prisma.contact.deleteMany({
-        where: {
-          email: emailDomain
-            ? { contains: `@${emailDomain}`, mode: "insensitive" }
-            : undefined,
-        },
-      });
-    } else if (phoneNumber) {
-      await prisma.contact.deleteMany({
-        where: {
-          phoneNumber: phoneNumber || undefined,
-        },
-      });
-    }
-
-
+  if (email) {
+    const emailDomain = email.split("@")[1];
+    await prisma.contact.deleteMany({
+      where: {
+        email: emailDomain
+          ? { contains: `@${emailDomain}`, mode: "insensitive" }
+          : undefined,
+      },
+    });
+  } else if (phoneNumber) {
+    await prisma.contact.deleteMany({
+      where: {
+        phoneNumber: phoneNumber || undefined,
+      },
+    });
+  }
 };
