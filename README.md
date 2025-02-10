@@ -1,4 +1,3 @@
-# bitespeed-payback
 # BiteSpeed Payback
 
 ## 🚀 Overview
