@@ -190,3 +190,12 @@ export const identifyContact = async (
     throw new DatabaseError("There was an issue with the database.");
   }
 };
+
+
+export const clearContacts = async () => {
+    try {
+        await prisma.contact.deleteMany({});
+    } catch (error) {
+        throw new DatabaseError("There was an issue with the database.");
+    }
+}
