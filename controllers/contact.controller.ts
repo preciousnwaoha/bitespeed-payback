@@ -1,13 +1,13 @@
-import {  getAllContacts, identifyContact } from "../services/contact.service";
-import { DatabaseError, handleError, ValidationError } from "../utils/errors";
+import {
+  clearAllContacts,
+  getAllContacts,
+  identifyContact,
+} from "../services/contact.service";
 
-// Identifies a contact based on the provided email or phone number
-// It returns the contact information or an error if not found
+// Identify endpoint
 export const identify = async (req: any, res: any) => {
   try {
     const { email, phoneNumber } = req.body;
-
-    console.log(email, phoneNumber)
 
     const result = await identifyContact(email || null, phoneNumber || null);
 
@@ -15,33 +15,40 @@ export const identify = async (req: any, res: any) => {
       contact: result,
     });
   } catch (error: any) {
-    const { statusCode, status, message, details } = handleError(error);
-    res.status(statusCode).json({
-      status,
-      message,
-      details,
-    });
+    return res.status(400).json({ error: error.message });
   }
 };
 
-
-// Get all contacts from the database
+// Get all contacts
 export const getAll = async (req: any, res: any) => {
-  try {
-    // get request parameters
-    const { email, phoneNumber } = req.query;
+  const { email, phoneNumber } = req.query;
 
+  try {
     const contacts = await getAllContacts(email || null, phoneNumber || null);
 
+    res.json(contacts);
+  } catch (error: any) {
+    return res.status(400).json({ error: error.message });
+  }
+};
+
+// Clear all contacts
+export const clearAll = async (req: any, res: any) => {
+  const { email, phoneNumber, password } = req.query;
+
+  if (password !== process.env.CLEAR_PASSWORD) {
+    return res.status(401).json({
+      error: "Unauthorized",
+    });
+  }
+
+  try {
+    await clearAllContacts(email || null, phoneNumber || null);
+
     res.json({
-      contacts,
+      message: "All contacts have been cleared",
     });
   } catch (error: any) {
-    const { statusCode, status, message, details } = handleError(error);
-    res.status(statusCode).json({
-      status,
-      message,
-      details,
-    });
+    return res.status(400).json({ error: error.message });
   }
 };

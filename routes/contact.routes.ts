@@ -1,15 +1,11 @@
 import { Router } from "express";
-import { getAll, identify } from "../controllers/contact.controller";
-import { clear } from "console";
+import { clearAll, getAll, identify } from "../controllers/contact.controller";
 
 const router = Router();
 
 router.post("/", identify);
 
-// this path were added to easily test
-// it's a feature not a bug 😁
 router.get("/", getAll);
-
-
+router.delete("/clear", clearAll);
 
 export default router;

@@ -4,6 +4,10 @@ import cors from "cors";
 import { json, urlencoded } from "body-parser";
 import contactRoutes from "./routes/contact.routes";
 
+import dotenv from "dotenv";
+
+dotenv.config();
+
 const app: Express = express();
 
 app.use(cors());

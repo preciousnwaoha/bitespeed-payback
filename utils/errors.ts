@@ -20,6 +20,7 @@ export const handleError = (error: any) => {
     statusCode = 422; // Unprocessable Entity
     errorMessage = error.message;
   } else if (error instanceof DatabaseError) {
+    statusCode = 500; // Internal Server Error
     errorMessage = "There was an issue with the database.";
   }
 
